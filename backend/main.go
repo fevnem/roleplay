@@ -3,6 +3,8 @@ package main
 
 import (
 	"context"
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +15,9 @@ import (
 	"dreamproject/backend/api"
 	"dreamproject/backend/database"
 )
+
+//go:embed public
+var publicFS embed.FS
 
 func main() {
 	port := os.Getenv("PORT")
@@ -38,6 +43,12 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+	// serve the embedded single-page frontend at "/"
+	sub, err := fs.Sub(publicFS, "public")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mux.Handle("/", http.FileServer(http.FS(sub)))
 
 	srv := &http.Server{Addr: "0.0.0.0:" + port, Handler: mux}
 	go func() {
