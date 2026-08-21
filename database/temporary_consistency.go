@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"dreamproject/backend/model"
+	"dreamproject/model"
 )
 
 const (

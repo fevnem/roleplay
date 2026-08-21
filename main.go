@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"dreamproject/backend/api"
-	"dreamproject/backend/database"
+	"dreamproject/api"
+	"dreamproject/database"
 )
 
 //go:embed public
