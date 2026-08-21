@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,7 +22,9 @@ const (
 
 type Session struct {
 	ID         string          `json:"id"`
+	Character  string          `json:"character"` // chosen persona key
 	Messages   []model.Message `json:"messages"`
+	Facts      []string        `json:"facts"` // small long-ish memory about the user (TTL-bounded)
 	LastActive time.Time       `json:"last_active"`
 }
 
@@ -76,6 +79,59 @@ func (s *Store) Recent(id string, n int) []model.Message {
 			n = len(sess.Messages)
 		}
 		return sess.Messages[len(sess.Messages)-n:]
+	}
+	return nil
+}
+
+// SetCharacter records the persona a session is talking to.
+func (s *Store) SetCharacter(id, name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess, ok := s.sessions[id]; ok {
+		sess.Character = name
+	}
+}
+
+// Character returns the session's chosen persona ("" if unset).
+func (s *Store) Character(id string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if sess, ok := s.sessions[id]; ok {
+		return sess.Character
+	}
+	return ""
+}
+
+// Remember appends a unique fact about the user (capped to keep it light).
+func (s *Store) Remember(id, fact string) {
+	if strings.TrimSpace(fact) == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.sessions[id]
+	if !ok {
+		return
+	}
+	for _, f := range sess.Facts {
+		if strings.EqualFold(f, fact) {
+			return // de-dup
+		}
+	}
+	if len(sess.Facts) >= 8 {
+		sess.Facts = sess.Facts[1:] // keep most recent
+	}
+	sess.Facts = append(sess.Facts, fact)
+}
+
+// Facts returns the facts the character remembers about this user.
+func (s *Store) Facts(id string) []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if sess, ok := s.sessions[id]; ok {
+		out := make([]string, len(sess.Facts))
+		copy(out, sess.Facts)
+		return out
 	}
 	return nil
 }

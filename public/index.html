@@ -4,11 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dreamproject</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header>
-  <h1 id="char-name">✨</h1>
+  <span id="char-name">✨</span>
+  <select id="char" aria-label="Choose character"></select>
 </header>
 <main id="chat">
   <div class="bubble bot" id="greeting"></div>
@@ -17,6 +19,7 @@
   <input id="text" type="text" autocomplete="off" placeholder="Write something…">
   <button id="send">➤</button>
 </div>
+<div id="toast" hidden></div>
 <script src="app.js"></script>
 </body>
 </html>
