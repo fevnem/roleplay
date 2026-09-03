@@ -1,0 +1,19 @@
+# Local dev & tooling
+.git/
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+sample.env
+
+# Go build artifacts
+roleplay
+/tmp/
+*.out
+
+# Editor / OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store

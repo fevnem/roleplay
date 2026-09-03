@@ -1,15 +1,32 @@
-// Package model talks to the (OpenAI-compatible) LLM provider.
+// Package model talks to an OpenAI-compatible chat-completions provider.
+//
+// The package is deliberately dependency-injected: a *model.Client is built
+// from a Config and can be constructed in tests with a mock http.RoundTripper,
+// so the streaming and facts logic is exercised against fake providers without
+// network access.
 package model
 
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
+)
+
+// Defaults for the provider connection.
+const (
+	DefaultBaseURL = "https://inference.hetzner.com/api/v1"
+	DefaultModel   = "Qwen/Qwen3.6-35B-A3B-FP8"
+
+	// defaultTimeout bounds any single provider round-trip so a stalled
+	// inference ever hangs a user request.
+	defaultTimeout = 2 * time.Minute
 )
 
 // Message is one chat turn, shaped like OpenAI's chat message.
@@ -18,36 +35,72 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-// config holds provider settings, resolved from env at process start so the
-// API token is never compiled into the binary. Env vars:
+// Config holds provider settings. The API key is read from the environment at
+// construction time so it is never compiled into the binary.
+type Config struct {
+	APIKey  string
+	BaseURL string
+	Model   string
+	Timeout time.Duration // optional; 0 → defaultTimeout
+}
+
+// ConfigFromEnv builds a Config from the process environment.
 //
 //	MODEL_API_KEY    (required) provider bearer token
 //	MODEL_BASE_URL   (optional) default: https://inference.hetzner.com/api/v1
 //	MODEL_NAME       (optional) default: Qwen/Qwen3.6-35B-A3B-FP8
-type config struct {
-	APIKey  string
-	BaseURL string
-	Model   string
+func ConfigFromEnv() Config {
+	return Config{
+		APIKey:  strings.TrimSpace(os.Getenv("MODEL_API_KEY")),
+		BaseURL: strings.TrimRight(strings.TrimSpace(os.Getenv("MODEL_BASE_URL")), "/"),
+		Model:   strings.TrimSpace(os.Getenv("MODEL_NAME")),
+	}
 }
 
-var cfg = config{
-	APIKey:  strings.TrimSpace(os.Getenv("MODEL_API_KEY")),
-	BaseURL: strings.TrimRight(strings.TrimSpace(os.Getenv("MODEL_BASE_URL")), "/"),
-	Model:   strings.TrimSpace(os.Getenv("MODEL_NAME")),
+// Client talks to one OpenAI-compatible endpoint. Zero-value Client is safe to
+// use after resolving defaults via its methods, but prefer NewClient.
+type Client struct {
+	apiKey  string
+	baseURL string
+	model   string
+	httpc   *http.Client
 }
 
-func init() {
+// NewClient resolves config defaults and returns a ready-to-use Client.
+func NewClient(cfg Config) *Client {
 	if cfg.BaseURL == "" {
-		cfg.BaseURL = "https://inference.hetzner.com/api/v1"
+		cfg.BaseURL = DefaultBaseURL
 	}
 	if cfg.Model == "" {
-		cfg.Model = "Qwen/Qwen3.6-35B-A3B-FP8"
+		cfg.Model = DefaultModel
 	}
-	if cfg.APIKey == "" {
-		fmt.Fprintln(os.Stderr, "roleplay: MODEL_API_KEY is not set — /api/chat will return errors")
+	timeout := cfg.Timeout
+	if timeout <= 0 {
+		timeout = defaultTimeout
+	}
+	return &Client{
+		apiKey:  cfg.APIKey,
+		baseURL: strings.TrimRight(cfg.BaseURL, "/"),
+		model:   cfg.Model,
+		httpc:   &http.Client{Timeout: timeout},
 	}
 }
 
+// HasAPIKey reports whether a provider token is configured.
+func (c *Client) HasAPIKey() bool { return c.apiKey != "" }
+
+// Model returns the configured model id.
+func (c *Client) Model() string { return c.model }
+
+// SetHTTPClient overrides the underlying HTTP client. Tests use this to inject
+// a fake RoundTripper; callers may use it to tune connection pooling.
+func (c *Client) SetHTTPClient(hc *http.Client) {
+	if hc != nil {
+		c.httpc = hc
+	}
+}
+
+// chatRequest is the OpenAI-compatible request body.
 type chatRequest struct {
 	Model              string         `json:"model"`
 	Messages           []Message      `json:"messages"`
@@ -57,59 +110,70 @@ type chatRequest struct {
 	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs"`
 }
 
-func callEndpoint(messages []Message, temperature float64, stream bool, maxTokens int) (*http.Response, error) {
+// call performs one provider request. It always sets the "enable_thinking":
+// false kwarg so reasoning-model output is returned in content rather than a
+// separate reasoning field (required for e.g. Hetzner's Qwen reasoning models).
+func (c *Client) call(ctx context.Context, messages []Message, temperature float64, stream bool, maxTokens int) (*http.Response, error) {
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("provider API key is not configured (set MODEL_API_KEY)")
+	}
 	req := chatRequest{
-		Model:     cfg.Model,
-		Messages:  messages,
-		Stream:    stream,
-		MaxTokens: maxTokens,
+		Model:              c.model,
+		Messages:           messages,
+		Stream:             stream,
+		MaxTokens:          maxTokens,
 		ChatTemplateKwargs: map[string]any{"enable_thinking": false},
 	}
 	if temperature > 0 {
 		req.Temperature = &temperature
 	}
-	body, _ := json.Marshal(req)
-	httpReq, err := http.NewRequest(http.MethodPost, cfg.BaseURL+"/chat/completions", bytes.NewReader(body))
+	body, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal request: %w", err)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
-	return http.DefaultClient.Do(httpReq)
+	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	resp, err := c.httpc.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("provider request: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		resp.Body.Close()
+		return nil, fmt.Errorf("provider status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+	}
+	return resp, nil
 }
 
-// StreamChat sends the context and streams each content token to onDelta.
-func StreamChat(messages []Message, temperature float64, onDelta func(string)) error {
-	resp, err := callEndpoint(messages, temperature, true, 512)
+// Stream streams each content token of a completion to onDelta. The reply is
+// cut at maxTokens. Returns nil on a clean, fully-consumed stream.
+func (c *Client) Stream(ctx context.Context, messages []Message, temperature float64, onDelta func(string)) error {
+	resp, err := c.call(ctx, messages, temperature, true, 512)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("provider status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
-	}
 	return readSSE(resp.Body, onDelta)
 }
 
-// chatOnce is a single non-streaming completion (used for facts extraction).
-func chatOnce(messages []Message, temperature float64, maxTokens int) (string, error) {
-	resp, err := callEndpoint(messages, temperature, false, maxTokens)
+// Complete returns a single non-streaming completion (used for facts extraction).
+func (c *Client) Complete(ctx context.Context, messages []Message, temperature float64, maxTokens int) (string, error) {
+	resp, err := c.call(ctx, messages, temperature, false, maxTokens)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return "", fmt.Errorf("provider status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
-	}
 	var out struct {
 		Choices []struct {
 			Message Message `json:"message"`
 		} `json:"choices"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", err
+		return "", fmt.Errorf("decode completion: %w", err)
 	}
 	if len(out.Choices) > 0 {
 		return out.Choices[0].Message.Content, nil
@@ -122,11 +186,12 @@ var factSystem = "From the user's message, extract up to 2 stable facts about th
 	"plain text, short. If there are none, reply exactly: NONE"
 
 // ExtractFacts returns short persistent facts about the user from a message.
-func ExtractFacts(userMsg string) []string {
+// Failures are non-fatal: a provider blip yields no facts rather than an error.
+func (c *Client) ExtractFacts(ctx context.Context, userMsg string) []string {
 	if strings.TrimSpace(userMsg) == "" {
 		return nil
 	}
-	content, err := chatOnce([]Message{
+	content, err := c.Complete(ctx, []Message{
 		{Role: "system", Content: factSystem},
 		{Role: "user", Content: userMsg},
 	}, 0.3, 60)
@@ -147,6 +212,8 @@ func ExtractFacts(userMsg string) []string {
 	return facts
 }
 
+// readSSE parses an OpenAI-style SSE stream ("data:" JSON lines, optionally
+// terminated by "[DONE]") and forwards each content delta to onDelta.
 func readSSE(r io.Reader, onDelta func(string)) error {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
@@ -174,9 +241,4 @@ func readSSE(r io.Reader, onDelta func(string)) error {
 		}
 	}
 	return sc.Err()
-}
-
-// ListModels returns the configured model id.
-func ListModels() []string {
-	return []string{cfg.Model}
 }

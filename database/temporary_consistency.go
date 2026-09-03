@@ -16,8 +16,9 @@ import (
 
 const (
 	TTL          = 3 * time.Hour      // a session's memory lasts a few hours
-	maxMessages = 20                 // keep only the last N turns per session
-	maxSessions  = 5000              // safety cap on concurrent sessions
+	maxMessages  = 20                 // keep only the last N turns per session
+	maxFacts     = 8                  // keep only the last N remembered facts
+	maxSessions  = 5000               // safety cap on concurrent sessions
 )
 
 type Session struct {
@@ -83,13 +84,17 @@ func (s *Store) Recent(id string, n int) []model.Message {
 	return nil
 }
 
-// SetCharacter records the persona a session is talking to.
+// SetCharacter records the persona a session is talking to, creating the
+// session if it does not yet exist.
 func (s *Store) SetCharacter(id, name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if sess, ok := s.sessions[id]; ok {
-		sess.Character = name
+	sess, ok := s.sessions[id]
+	if !ok {
+		sess = &Session{ID: id, LastActive: time.Now()}
+		s.sessions[id] = sess
 	}
+	sess.Character = name
 }
 
 // Character returns the session's chosen persona ("" if unset).
@@ -102,7 +107,8 @@ func (s *Store) Character(id string) string {
 	return ""
 }
 
-// Remember appends a unique fact about the user (capped to keep it light).
+// Remember appends a unique fact about the user (capped to keep it light),
+// creating the session if it does not yet exist.
 func (s *Store) Remember(id, fact string) {
 	if strings.TrimSpace(fact) == "" {
 		return
@@ -111,14 +117,15 @@ func (s *Store) Remember(id, fact string) {
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[id]
 	if !ok {
-		return
+		sess = &Session{ID: id, LastActive: time.Now()}
+		s.sessions[id] = sess
 	}
 	for _, f := range sess.Facts {
 		if strings.EqualFold(f, fact) {
 			return // de-dup
 		}
 	}
-	if len(sess.Facts) >= 8 {
+	if len(sess.Facts) >= maxFacts {
 		sess.Facts = sess.Facts[1:] // keep most recent
 	}
 	sess.Facts = append(sess.Facts, fact)

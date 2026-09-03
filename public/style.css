@@ -111,6 +111,15 @@ body {
 .card-greet { margin-top: 14px; color: var(--text-3); font-size: 13px; font-style: italic; }
 
 .footnote { margin-top: 34px; text-align: center; color: var(--text-3); font-size: 13px; }
+.footnote.empty { margin-top: 44px; }
+
+/* loading spinner */
+.loader {
+  width: 34px; height: 34px; margin: 28px auto 0; border-radius: 50%;
+  border: 3px solid var(--surface-3); border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Chat ───────────────────────────────────────────── */
 #chat { display: flex; flex-direction: column; background: transparent; animation: fadein .4s ease both; }

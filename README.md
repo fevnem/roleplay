@@ -17,23 +17,27 @@ Single Go binary (with embedded frontend). No database server, no build pipeline
 
 ```
 roleplay/
-├── main.go                 # bootstrap: server, routes, graceful shutdown
-├── api/                    # HTTP layer (thin handlers)
-│   └── chat.go             #   /api/chat, /api/history, /api/characters
+├── main.go                 # bootstrap: server, timeouts, middleware, graceful shutdown
+├── api/                    # HTTP layer (thin handlers, DI via Handler struct)
+│   └── chat.go             #   /api/chat, /api/history, /api/characters (+ tests)
 ├── contexts/               # domain: character personas
-│   ├── personality.go      #   load YAML personas, build system prompts
+│   ├── personality.go      #   load YAML personas, build system prompts (+ tests)
 │   └── personas/*.yml      #   per-character definition (name, style, avatar, temp)
-├── database/               # persistence: in-memory session + facts store
+├── database/               # persistence: in-memory session + facts store (+ tests)
 │   └── temporary_consistency.go
-├── model/                  # provider: OpenAI-compatible chat client
-│   └── client.go           #   streaming + facts extraction (env-configured)
-└── public/                 # embedded single-page frontend
-    ├── index.html
-    ├── style.css
-    └── app.js
+├── model/                  # provider: OpenAI-compatible chat client (+ tests)
+│   └── client.go           #   streaming + facts extraction (env-configured, DI)
+├── public/                 # embedded single-page frontend
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
+├── .github/workflows/ci.yml    # vet + race tests + docker build
+├── Dockerfile               # multi-stage, static, non-root
+├── .dockerignore
+└── .env.example
 ```
 
-Layering is strict and one-directional: **handlers (api) → domain (contexts) → persistence (database) + provider (model)**. No HTTP in the store, no store logic in handlers.
+Layering is strict and one-directional: **handlers (api) → domain (contexts) → persistence (database) + provider (model)**. No HTTP in the store, no store logic in handlers. Dependencies are injected (the `Handler` struct and `model.Client`), which is what makes every package cleanly unit-testable with fakes.
 
 ## 🚀 Quick start (local)
 
@@ -63,7 +67,24 @@ docker run --rm -p 3000:3000 \
   roleplay
 ```
 
-`PORT` defaults to 3000; `SNAPSHOT=/app/data/sessions.json` is baked in so memory survives container restarts.
+The runtime image runs as a **non-root user** (`appuser`, uid 10001) with a static,
+CGO-free binary, a `HEALTHCHECK`, and `SNAPSHOT=/app/data/sessions.json` baked in so
+memory survives container restarts.
+
+## 🧪 Tests & CI
+
+```bash
+# run the full suite with the race detector + coverage
+go test -race -cover ./...
+```
+
+Coverage spans all packages: persona loading (`contexts`), the session/facts store
+(`database`), streaming/SSE parsing/facts extraction with a fake provider (`model`),
+and the HTTP handlers with a scriptable fake client (`api`). Tests caught and pinned a
+real bug — the store previously dropped writes made before a session existed.
+
+The included GitHub Actions workflow (`.github/workflows/ci.yml`) runs `go vet`,
+`go test -race -cover`, and a container build on every push/PR.
 
 ## ⚙️ Configuration (env vars)
 
@@ -100,9 +121,10 @@ It appears in the picker automatically. `avatar` and `accent` are optional (sens
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/api/characters` | GET | List public persona catalog (name, language, personality, greeting, avatar, accent). |
-| `/api/chat` | POST | Send a message; **streams** the reply as SSE `data:` deltas + a final `done`. |
+| `/api/chat` | POST | Send a message; **streams** the reply as SSE `data:` deltas + a final `done`. Max body 32 KB; session ≤64 chars, text ≤4000 chars. |
 | `/api/history?session=ID` | GET | Return greeting + recent turns + chosen character for a session. |
-| `/health` | GET | Liveness probe → `{"status":"ok"}`. |
+| `/healthz` | GET | **Liveness** probe → `{"status":"ok"}` (always 200 once serving). |
+| `/readyz` | GET | **Readiness** probe → 200 only when the provider is configured; else 503. |
 
 `/api/chat` request body:
 

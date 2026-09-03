@@ -50,7 +50,10 @@
   // ── Landing: render character cards ─────────────────
   function renderCards() {
     els.cards.innerHTML = '';
-    if (!catalog.length) { els.cards.innerHTML = '<p class="footnote">No characters found.</p>'; return; }
+    if (!catalog.length) {
+      els.cards.innerHTML = '<p class="footnote empty">No characters are available yet. Check back soon.</p>';
+      return;
+    }
     for (const c of catalog) {
       const card = document.createElement('button');
       card.className = 'card';
@@ -60,17 +63,27 @@
         `<span class="card-name">${esc(c.name)} <span class="badge">${esc(c.language)}</span></span>` +
         `<span class="card-pers">${esc(c.personality)}</span>` +
         `<span class="card-greet">“${esc(c.greeting)}”</span>`;
+      card.type = 'button'; // avoid accidental form submit semantics
       card.onclick = () => openChat(c);
       els.cards.appendChild(card);
     }
   }
 
   // ── Navigation ───────────────────────────────────────
+  // A small view-state stack decouples UI from history entries so the browser
+  // Back/Forward buttons navigate predictably between landing and chat.
   function showLanding() {
+    active = null;
     els.chat.hidden = true; els.landing.hidden = false;
-    history.pushState({ view: 'landing' }, '');
+    window.history.pushState({ view: 'landing' }, '');
   }
   function openChat(c) {
+    setChatView(c, true);
+  }
+
+  // setChatView switches the UI into the chat view. push=true records a
+  // history entry (user action); push=false merely restores state (popstate).
+  function setChatView(c, push) {
     active = c;
     els.landing.hidden = true; els.chat.hidden = false;
     els.thread.innerHTML = '';
@@ -78,7 +91,8 @@
     els.chatName.textContent = c.name;
     els.presenceLabel.textContent = 'Online';
     theme(c);
-    history.pushState({ view: 'chat' }, '');
+    if (push) window.history.pushState({ view: 'chat', character: c.name.toLowerCase() }, '');
+    els.landing.scrollTop = 0;
     els.text.focus();
     loadHistory();
   }
@@ -192,6 +206,7 @@
 
   // ── Init ─────────────────────────────────────────────
   async function init() {
+    els.cards.innerHTML = '<div class="loader" aria-hidden="true"></div><p class="footnote">Loading characters…</p>';
     try {
       const r = await fetch('/api/characters');
       const d = await r.json();
@@ -205,12 +220,21 @@
     els.text.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
     });
-    els.back.onclick = showLanding;
+    els.back.onclick = () => showLanding();
     els.infoBtn.onclick = () => active && showModal(active);
     els.modalClose.onclick = () => { els.modal.hidden = true; };
     els.modal.onclick = (e) => { if (e.target === els.modal) els.modal.hidden = true; };
-    window.addEventListener('popstate', () => {
-      if (location.pathname.endsWith('/')) { /* root */ }
+    // Browser Back/Forward: follow the pushed state to land/chat.
+    window.addEventListener('popstate', (e) => {
+      const view = e.state && e.state.view;
+      if (view === 'chat') {
+        // restore the character if we still have its card; else fall back.
+        const name = e.state.character;
+        const c = catalog.find(x => x.name.toLowerCase() === name) || catalog[0];
+        if (c) setChatView(c, false);
+      } else {
+        els.chat.hidden = true; els.landing.hidden = false; active = null;
+      }
     });
 
     setSendEnabled();
