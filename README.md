@@ -4,8 +4,6 @@ Talk to a character who remembers you. `roleplay` is a self-contained character-
 
 Single Go binary (with embedded frontend). No database server, no build pipeline for the UI — everything compiles into one static binary and ships as one Docker container.
 
-[![Deploy to Fly](https://raw.githubusercontent.com/fevnem/roleplay/master/deploy-on-fly.svg)](https://fly.io/)
-
 ## ✨ Highlights
 
 - **Multiple characters** (Luna, Max, Aarav, Zara) — each with its own persona, speaking style, temperature, avatar, and accent color defined in `contexts/personas/*.yml`.
@@ -80,6 +78,8 @@ CGO-free binary, a `HEALTHCHECK`, and `SNAPSHOT=/app/data/sessions.json` baked i
 memory survives container restarts.
 
 ## 🚀 Deploy to Fly.io
+
+[![Deploy to Fly](https://github.com/fevnem/roleplay/raw/master/deploy-on-fly.png)](https://fly.io/)
 
 The included `Dockerfile` (static, CGO-free, non-root, `HEALTHCHECK`) deploys to Fly.io as-is.
 
