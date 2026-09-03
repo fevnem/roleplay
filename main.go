@@ -46,9 +46,12 @@ func main() {
 	snapshot := os.Getenv("SNAPSHOT") // e.g. data/sessions.json; empty = pure RAM
 
 	store := database.NewStore(snapshot)
-	client := model.NewClient(model.ConfigFromEnv())
-	if !client.HasAPIKey() {
-		logger.Warn("MODEL_API_KEY is not set — /api/chat will return 503 until configured")
+	client, err := model.NewClient(model.ConfigFromEnv())
+	if err != nil {
+		// A fully unconfigured provider is not fatal at startup: the server can
+		// still serve the UI and probes, and /readyz + /api/chat will report the
+		// misconfiguration. Log loudly so it's never silently wrong.
+		logger.Warn("provider not fully configured", "error", err)
 	}
 
 	h := &api.Handler{Store: store, Client: client, Log: logger}
@@ -86,7 +89,11 @@ func main() {
 
 	errCh := make(chan error, 1)
 	go func() {
-		logger.Info("roleplay listening", "addr", srv.Addr, "model", client.Model())
+		if client != nil {
+			logger.Info("roleplay listening", "addr", srv.Addr, "provider", client.Name(), "model", client.Model())
+		} else {
+			logger.Info("roleplay listening", "addr", srv.Addr, "provider", "unconfigured")
+		}
 		errCh <- srv.ListenAndServe()
 	}()
 

@@ -19,15 +19,9 @@ import (
 	"time"
 )
 
-// Defaults for the provider connection.
-const (
-	DefaultBaseURL = "https://inference.hetzner.com/api/v1"
-	DefaultModel   = "Qwen/Qwen3.6-35B-A3B-FP8"
-
-	// defaultTimeout bounds any single provider round-trip so a stalled
-	// inference ever hangs a user request.
-	defaultTimeout = 2 * time.Minute
-)
+// providerTimeout bounds any single provider round-trip so a stalled
+// inference never hangs a user request.
+const providerTimeout = 2 * time.Minute
 
 // Message is one chat turn, shaped like OpenAI's chat message.
 type Message struct {
@@ -35,62 +29,94 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-// Config holds provider settings. The API key is read from the environment at
-// construction time so it is never compiled into the binary.
+// Config holds provider settings. All fields come from the environment at
+// construction time so provider-specific values are never compiled into the
+// binary and the same binary can target any OpenAI-compatible endpoint.
 type Config struct {
-	APIKey  string
-	BaseURL string
-	Model   string
-	Timeout time.Duration // optional; 0 → defaultTimeout
+	Name      string        // provider name (label only, e.g. "hetzner", "openai")
+	Model     string        // model identifier (e.g. "Qwen/Qwen3.6-35B-A3B-FP8")
+	Endpoint  string        // OpenAI-compatible base endpoint (e.g. https://inference.hetzner.com/api/v1)
+	APIKey    string        // provider bearer token
+	Timeout   time.Duration // optional; 0 → providerTimeout
 }
 
-// ConfigFromEnv builds a Config from the process environment.
+// ConfigFromEnv builds a Config from the process environment. All four provider
+// settings are expected; empty values are left empty and surface as validation
+// errors when a client is built, rather than silently falling back to a vendor.
 //
-//	MODEL_API_KEY    (required) provider bearer token
-//	MODEL_BASE_URL   (optional) default: https://inference.hetzner.com/api/v1
-//	MODEL_NAME       (optional) default: Qwen/Qwen3.6-35B-A3B-FP8
+//	PROVIDER_NAME         provider name (label)
+//	MODEL_NAME            model identifier to request
+//	PROVIDER_API_ENDPOINT OpenAI-compatible base endpoint (no trailing /chat/completions)
+//	PROVIDER_API_KEY      provider bearer token
 func ConfigFromEnv() Config {
 	return Config{
-		APIKey:  strings.TrimSpace(os.Getenv("MODEL_API_KEY")),
-		BaseURL: strings.TrimRight(strings.TrimSpace(os.Getenv("MODEL_BASE_URL")), "/"),
-		Model:   strings.TrimSpace(os.Getenv("MODEL_NAME")),
+		Name:     strings.TrimSpace(os.Getenv("PROVIDER_NAME")),
+		Model:    strings.TrimSpace(os.Getenv("MODEL_NAME")),
+		Endpoint: strings.TrimRight(strings.TrimSpace(os.Getenv("PROVIDER_API_ENDPOINT")), "/"),
+		APIKey:   strings.TrimSpace(os.Getenv("PROVIDER_API_KEY")),
 	}
 }
 
-// Client talks to one OpenAI-compatible endpoint. Zero-value Client is safe to
-// use after resolving defaults via its methods, but prefer NewClient.
+// ConfigError is returned when a provider Config is incomplete, naming which
+// required fields are missing so operators can fix the environment quickly.
+type ConfigError struct {
+	Missing []string
+}
+
+func (e *ConfigError) Error() string {
+	return "provider config incomplete, missing: " + strings.Join(e.Missing, ", ")
+}
+
+// Client talks to one OpenAI-compatible endpoint.
 type Client struct {
+	name    string
 	apiKey  string
-	baseURL string
+	endpoint string
 	model   string
 	httpc   *http.Client
 }
 
-// NewClient resolves config defaults and returns a ready-to-use Client.
-func NewClient(cfg Config) *Client {
-	if cfg.BaseURL == "" {
-		cfg.BaseURL = DefaultBaseURL
+// NewClient validates and returns a ready-to-use Client. It returns a
+// *ConfigError (as an error) if any required field is empty, so a misconfigured
+// provider fails loudly instead of calling a default vendor.
+func NewClient(cfg Config) (*Client, error) {
+	var missing []string
+	if cfg.Name == "" {
+		missing = append(missing, "PROVIDER_NAME")
 	}
 	if cfg.Model == "" {
-		cfg.Model = DefaultModel
+		missing = append(missing, "MODEL_NAME")
+	}
+	if cfg.Endpoint == "" {
+		missing = append(missing, "PROVIDER_API_ENDPOINT")
+	}
+	if cfg.APIKey == "" {
+		missing = append(missing, "PROVIDER_API_KEY")
+	}
+	if len(missing) > 0 {
+		return nil, &ConfigError{Missing: missing}
 	}
 	timeout := cfg.Timeout
 	if timeout <= 0 {
-		timeout = defaultTimeout
+		timeout = providerTimeout
 	}
 	return &Client{
-		apiKey:  cfg.APIKey,
-		baseURL: strings.TrimRight(cfg.BaseURL, "/"),
-		model:   cfg.Model,
-		httpc:   &http.Client{Timeout: timeout},
-	}
+		name:     cfg.Name,
+		apiKey:   cfg.APIKey,
+		endpoint: strings.TrimRight(cfg.Endpoint, "/"),
+		model:    cfg.Model,
+		httpc:    &http.Client{Timeout: timeout},
+	}, nil
 }
 
 // HasAPIKey reports whether a provider token is configured.
-func (c *Client) HasAPIKey() bool { return c.apiKey != "" }
+func (c *Client) HasAPIKey() bool { return c != nil && c.apiKey != "" }
 
 // Model returns the configured model id.
 func (c *Client) Model() string { return c.model }
+
+// Name returns the configured provider name.
+func (c *Client) Name() string { return c.name }
 
 // SetHTTPClient overrides the underlying HTTP client. Tests use this to inject
 // a fake RoundTripper; callers may use it to tune connection pooling.
@@ -112,10 +138,10 @@ type chatRequest struct {
 
 // call performs one provider request. It always sets the "enable_thinking":
 // false kwarg so reasoning-model output is returned in content rather than a
-// separate reasoning field (required for e.g. Hetzner's Qwen reasoning models).
+// separate reasoning field (required for reasoning models such as Qwen).
 func (c *Client) call(ctx context.Context, messages []Message, temperature float64, stream bool, maxTokens int) (*http.Response, error) {
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("provider API key is not configured (set MODEL_API_KEY)")
+		return nil, fmt.Errorf("provider API key is not configured (set PROVIDER_API_KEY)")
 	}
 	req := chatRequest{
 		Model:              c.model,
@@ -131,7 +157,7 @@ func (c *Client) call(ctx context.Context, messages []Message, temperature float
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}

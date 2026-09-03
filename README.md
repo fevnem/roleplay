@@ -19,25 +19,25 @@ Single Go binary (with embedded frontend). No database server, no build pipeline
 roleplay/
 ├── main.go                 # bootstrap: server, timeouts, middleware, graceful shutdown
 ├── api/                    # HTTP layer (thin handlers, DI via Handler struct)
-│   └── chat.go             #   /api/chat, /api/history, /api/characters (+ tests)
+│   └── chat.go             #   /api/chat, /api/history, /api/characters
 ├── contexts/               # domain: character personas
-│   ├── personality.go      #   load YAML personas, build system prompts (+ tests)
+│   ├── personality.go      #   load YAML personas, build system prompts
 │   └── personas/*.yml      #   per-character definition (name, style, avatar, temp)
-├── database/               # persistence: in-memory session + facts store (+ tests)
+├── database/               # persistence: in-memory session + facts store
 │   └── temporary_consistency.go
-├── model/                  # provider: OpenAI-compatible chat client (+ tests)
+├── model/                  # provider: OpenAI-compatible chat client
 │   └── client.go           #   streaming + facts extraction (env-configured, DI)
 ├── public/                 # embedded single-page frontend
 │   ├── index.html
 │   ├── style.css
 │   └── app.js
-├── .github/workflows/ci.yml    # vet + race tests + docker build
+├── LICENSE                 # MIT
 ├── Dockerfile               # multi-stage, static, non-root
 ├── .dockerignore
 └── .env.example
 ```
 
-Layering is strict and one-directional: **handlers (api) → domain (contexts) → persistence (database) + provider (model)**. No HTTP in the store, no store logic in handlers. Dependencies are injected (the `Handler` struct and `model.Client`), which is what makes every package cleanly unit-testable with fakes.
+Layering is strict and one-directional: **handlers (api) → domain (contexts) → persistence (database) + provider (model)**. No HTTP in the store, no store logic in handlers. Dependencies are injected (the `Handler` struct and `model.Client`) so every package stays decoupled and testable.
 
 ## 🚀 Quick start (local)
 
@@ -45,8 +45,11 @@ Layering is strict and one-directional: **handlers (api) → domain (contexts) �
 # 1. Build (Go 1.22+)
 go build -o roleplay .
 
-# 2. Provide a model API key
-export MODEL_API_KEY=your_key
+# 2. Configure the LLM provider (4 env vars)
+export PROVIDER_NAME=hetzner
+export MODEL_NAME=Qwen/Qwen3.6-35B-A3B-FP8
+export PROVIDER_API_ENDPOINT=https://inference.hetzner.com/api/v1
+export PROVIDER_API_KEY=your_key
 
 # 3. Run
 ./roleplay
@@ -63,7 +66,10 @@ Then pick a character from the cards and start chatting.
 ```bash
 docker build -t roleplay .
 docker run --rm -p 3000:3000 \
-  -e MODEL_API_KEY=your_key \
+  -e PROVIDER_NAME=hetzner \
+  -e MODEL_NAME=Qwen/Qwen3.6-35B-A3B-FP8 \
+  -e PROVIDER_API_ENDPOINT=https://inference.hetzner.com/api/v1 \
+  -e PROVIDER_API_KEY=your_key \
   roleplay
 ```
 
@@ -71,32 +77,20 @@ The runtime image runs as a **non-root user** (`appuser`, uid 10001) with a stat
 CGO-free binary, a `HEALTHCHECK`, and `SNAPSHOT=/app/data/sessions.json` baked in so
 memory survives container restarts.
 
-## 🧪 Tests & CI
-
-```bash
-# run the full suite with the race detector + coverage
-go test -race -cover ./...
-```
-
-Coverage spans all packages: persona loading (`contexts`), the session/facts store
-(`database`), streaming/SSE parsing/facts extraction with a fake provider (`model`),
-and the HTTP handlers with a scriptable fake client (`api`). Tests caught and pinned a
-real bug — the store previously dropped writes made before a session existed.
-
-The included GitHub Actions workflow (`.github/workflows/ci.yml`) runs `go vet`,
-`go test -race -cover`, and a container build on every push/PR.
-
 ## ⚙️ Configuration (env vars)
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `MODEL_API_KEY` | **yes** | – | Provider bearer token. Without it, `/api/chat` returns errors. |
-| `MODEL_BASE_URL` | no | `https://inference.hetzner.com/api/v1` | Any OpenAI-compatible base URL. |
-| `MODEL_NAME` | no | `Qwen/Qwen3.6-35B-A3B-FP8` | Model id to request. |
-| `PORT` | no | `3000` | HTTP listen port. |
-| `SNAPSHOT` | no | (RAM only) | JSON file path to persist session memory on shutdown. |
+| Variable | Required | Description |
+|---|---|---|
+| `PROVIDER_NAME` | **yes** | Provider label for logs (e.g. `hetzner`, `openai`). Any value. |
+| `MODEL_NAME` | **yes** | Model id to request (e.g. `Qwen/Qwen3.6-35B-A3B-FP8`). |
+| `PROVIDER_API_ENDPOINT` | **yes** | OpenAI-compatible base endpoint, no trailing `/chat/completions` (e.g. `https://inference.hetzner.com/api/v1`). |
+| `PROVIDER_API_KEY` | **yes** | Provider bearer API key. |
+| `PORT` | no | HTTP listen port (default `3000`). |
+| `SNAPSHOT` | no | JSON file path to persist session memory on shutdown (default: pure RAM). The Dockerfile sets `/app/data/sessions.json`. |
 
-> **Security:** the API token is read from the environment at runtime — it is never compiled into the binary or committed. See `.env.example`.
+The four `PROVIDER_*`/`MODEL_*` vars are **provider-agnostic**: point them at any OpenAI-compatible chat-completions endpoint (Hetzner, OpenAI, OpenRouter, a local vLLM, …). There are **no vendor defaults hardcoded** — an unset value surfaces as a clear error naming the missing variable, and `/api/chat` returns `503` until the provider is configured.
+
+> **Security:** the API key is read from the environment at runtime — it is never compiled into the binary or committed. See `.env.example`.
 
 ## 🧑‍🤝‍🧑 Adding a character
 
