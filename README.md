@@ -77,6 +77,44 @@ The runtime image runs as a **non-root user** (`appuser`, uid 10001) with a stat
 CGO-free binary, a `HEALTHCHECK`, and `SNAPSHOT=/app/data/sessions.json` baked in so
 memory survives container restarts.
 
+## 🚀 Deploy to Fly.io
+
+The included `Dockerfile` (static, CGO-free, non-root, `HEALTHCHECK`) deploys to Fly.io as-is.
+
+```bash
+# 1. Install flyctl + log in (device-code flow)
+curl -L https://fly.io/install.sh | sh
+export PATH="$HOME/.fly/bin:$PATH"
+flyctl auth login
+
+# 2. Scaffold the app (picks org + region, writes fly.toml)
+flyctl launch --auto-confirm --no-deploy --name <app-name>
+
+# 3. Set the provider secrets BEFORE the first deploy (encrypted, never committed)
+flyctl secrets set \
+  PROVIDER_NAME=hetzner \
+  MODEL_NAME=Qwen/Qwen3.6-35B-A3B-FP8 \
+  PROVIDER_API_ENDPOINT=https://inference.hetzner.com/api/v1 \
+  PROVIDER_API_KEY=your_key
+
+# 4. Deploy
+flyctl deploy --remote-only
+
+# 5. Visit https://<app-name>.fly.dev
+```
+
+Notes for running on Fly:
+
+- **Probes** — `/healthz` is the liveness probe (always `200` once serving); `/readyz` is the
+  readiness probe and returns `503` until the provider is fully configured.
+- **SSE** — for long-lived streaming chat connections, keep a machine warm with
+  `min_machines_running = 1` in `fly.toml` so a cold start never interrupts a reply.
+- **Persistence** — the default Fly machine disk is **ephemeral**. To keep the `SNAPSHOT`
+  across redeploys/recreates, add a volume and mount it at `/app/data`
+  (`flyctl volumes create <app> --size 1 && add [mounts] source = "data", destination = "/app/data"`).
+- **Billing** — a new app needs a paid org (add a card) before a machine can be created.
+- **Teardown** — `flyctl destroy <app-name>`.
+
 ## ⚙️ Configuration (env vars)
 
 | Variable | Required | Description |
