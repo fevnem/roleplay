@@ -1,0 +1,18 @@
+# fly.toml for roleplay — portable template.
+# No hardcoded app name or region, so `fly launch` creates YOUR app when you
+# deploy via the README button or CLI. Edit app/region locally as needed.
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 2100
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1   # keep a machine warm so SSE replies are never cold-started
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

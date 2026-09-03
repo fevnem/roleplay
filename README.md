@@ -4,6 +4,8 @@ Talk to a character who remembers you. `roleplay` is a self-contained character-
 
 Single Go binary (with embedded frontend). No database server, no build pipeline for the UI — everything compiles into one static binary and ships as one Docker container.
 
+[![Deploy to Fly](https://raw.githubusercontent.com/fevnem/roleplay/master/deploy-on-fly.svg)](https://fly.io/)
+
 ## ✨ Highlights
 
 - **Multiple characters** (Luna, Max, Aarav, Zara) — each with its own persona, speaking style, temperature, avatar, and accent color defined in `contexts/personas/*.yml`.
