@@ -28,7 +28,7 @@ import (
 var publicFS embed.FS
 
 const (
-	defaultPort      = "3000"
+	defaultPort      = "2100"
 	shutdownTimeout  = 5 * time.Second
 	serverReadHeader = 5 * time.Second
 	serverRead       = 15 * time.Second

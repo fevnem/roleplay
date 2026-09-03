@@ -53,10 +53,10 @@ export PROVIDER_API_KEY=your_key
 
 # 3. Run
 ./roleplay
-# → roleplay listening on :3000
+# → roleplay listening on :2100
 
 # 4. Open
-# → http://localhost:3000
+# → http://localhost:2100
 ```
 
 Then pick a character from the cards and start chatting.
@@ -65,7 +65,7 @@ Then pick a character from the cards and start chatting.
 
 ```bash
 docker build -t roleplay .
-docker run --rm -p 3000:3000 \
+docker run --rm -p 2100:2100 \
   -e PROVIDER_NAME=hetzner \
   -e MODEL_NAME=Qwen/Qwen3.6-35B-A3B-FP8 \
   -e PROVIDER_API_ENDPOINT=https://inference.hetzner.com/api/v1 \
@@ -85,7 +85,7 @@ memory survives container restarts.
 | `MODEL_NAME` | **yes** | Model id to request (e.g. `Qwen/Qwen3.6-35B-A3B-FP8`). |
 | `PROVIDER_API_ENDPOINT` | **yes** | OpenAI-compatible base endpoint, no trailing `/chat/completions` (e.g. `https://inference.hetzner.com/api/v1`). |
 | `PROVIDER_API_KEY` | **yes** | Provider bearer API key. |
-| `PORT` | no | HTTP listen port (default `3000`). |
+| `PORT` | no | HTTP listen port (default `2100`). |
 | `SNAPSHOT` | no | JSON file path to persist session memory on shutdown (default: pure RAM). The Dockerfile sets `/app/data/sessions.json`. |
 
 The four `PROVIDER_*`/`MODEL_*` vars are **provider-agnostic**: point them at any OpenAI-compatible chat-completions endpoint (Hetzner, OpenAI, OpenRouter, a local vLLM, …). There are **no vendor defaults hardcoded** — an unset value surfaces as a clear error naming the missing variable, and `/api/chat` returns `503` until the provider is configured.
