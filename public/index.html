@@ -2,24 +2,75 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dreamproject</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="roleplay — immerse yourself in a chat with characters who remember you.">
+<meta name="theme-color" content="#07090d">
+<title>roleplay — talk to a character</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <span id="char-name">✨</span>
-  <select id="char" aria-label="Choose character"></select>
-</header>
-<main id="chat">
-  <div class="bubble bot" id="greeting"></div>
-</main>
-<div id="inputbar">
-  <input id="text" type="text" autocomplete="off" placeholder="Write something…">
-  <button id="send">➤</button>
+
+<!-- ✦ Ambient background -->
+<div class="bg" aria-hidden="true">
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-grid"></div>
 </div>
-<div id="toast" hidden></div>
+
+<!-- ═══ LANDING ═══ -->
+<section id="landing" class="screen">
+  <div class="landing-wrap">
+    <header class="brand">
+      <div class="brand-mark">🎭</div>
+      <h1 class="brand-name">roleplay</h1>
+      <p class="brand-tag">Pick a character. They remember you.</p>
+    </header>
+
+    <div class="cards" id="cards"></div>
+
+    <p class="footnote">Persistent memory · private · in-character</p>
+  </div>
+</section>
+
+<!-- ═══ CHAT ═══ -->
+<section id="chat" class="screen" hidden>
+  <header class="chatbar">
+    <div class="chatbar-left">
+      <button id="back" class="icon-btn" aria-label="All characters" title="All characters">‹</button>
+      <div class="avatar" id="chat-avatar">✨</div>
+      <div class="chatbar-meta">
+        <div class="presence"><span class="dot" id="presence-dot"></span><span id="presence-label">Online</span></div>
+        <div class="chat-name" id="chat-name">Character</div>
+      </div>
+    </div>
+    <div class="chatbar-right">
+      <button id="info-btn" class="icon-btn" aria-label="About this character" title="About">i</button>
+    </div>
+  </header>
+
+  <main id="thread"></main>
+
+  <div class="composer">
+    <textarea id="text" rows="1" placeholder="Message your character…" autocomplete="off" enterkeyhint="send"></textarea>
+    <button id="send" class="send-btn" aria-label="Send" disabled>➤</button>
+  </div>
+</section>
+
+<!-- character info modal -->
+<div class="modal" id="info-modal" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+    <div class="modal-avatar" id="modal-avatar">✨</div>
+    <h2 id="modal-name"></h2>
+    <div class="modal-lang" id="modal-lang"></div>
+    <p id="modal-personality"></p>
+    <p class="modal-back" id="modal-backstory"></p>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
 <script src="app.js"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
-// dreamproject backend — a personality chatbot with temporary in-memory memory.
+// roleplay — a character roleplay chatbot with per-character personas,
+// facts memory, and a temporary in-memory session store.
 package main
 
 import (
@@ -12,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"dreamproject/api"
-	"dreamproject/database"
+	"roleplay/api"
+	"roleplay/database"
 )
 
 //go:embed public
@@ -53,7 +54,7 @@ func main() {
 
 	srv := &http.Server{Addr: "0.0.0.0:" + port, Handler: mux}
 	go func() {
-		log.Printf("dreamproject listening on :%s", port)
+		log.Printf("roleplay listening on :%s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}

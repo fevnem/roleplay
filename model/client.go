@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -17,12 +18,35 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-// Server config. The Hetzner token is hardcoded as a default; env overrides it.
-const (
-	defaultBaseURL = "https://inference.hetzner.com/api/v1"
-	defaultAPIKey  = "REDACTED_LLM_API_TOKEN"
-	defaultModel   = "Qwen/Qwen3.6-35B-A3B-FP8" // fastest model on Hetzner free
-)
+// config holds provider settings, resolved from env at process start so the
+// API token is never compiled into the binary. Env vars:
+//
+//	MODEL_API_KEY    (required) provider bearer token
+//	MODEL_BASE_URL   (optional) default: https://inference.hetzner.com/api/v1
+//	MODEL_NAME       (optional) default: Qwen/Qwen3.6-35B-A3B-FP8
+type config struct {
+	APIKey  string
+	BaseURL string
+	Model   string
+}
+
+var cfg = config{
+	APIKey:  strings.TrimSpace(os.Getenv("MODEL_API_KEY")),
+	BaseURL: strings.TrimRight(strings.TrimSpace(os.Getenv("MODEL_BASE_URL")), "/"),
+	Model:   strings.TrimSpace(os.Getenv("MODEL_NAME")),
+}
+
+func init() {
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = "https://inference.hetzner.com/api/v1"
+	}
+	if cfg.Model == "" {
+		cfg.Model = "Qwen/Qwen3.6-35B-A3B-FP8"
+	}
+	if cfg.APIKey == "" {
+		fmt.Fprintln(os.Stderr, "roleplay: MODEL_API_KEY is not set — /api/chat will return errors")
+	}
+}
 
 type chatRequest struct {
 	Model              string         `json:"model"`
@@ -35,7 +59,7 @@ type chatRequest struct {
 
 func callEndpoint(messages []Message, temperature float64, stream bool, maxTokens int) (*http.Response, error) {
 	req := chatRequest{
-		Model:     defaultModel,
+		Model:     cfg.Model,
 		Messages:  messages,
 		Stream:    stream,
 		MaxTokens: maxTokens,
@@ -45,12 +69,12 @@ func callEndpoint(messages []Message, temperature float64, stream bool, maxToken
 		req.Temperature = &temperature
 	}
 	body, _ := json.Marshal(req)
-	httpReq, err := http.NewRequest(http.MethodPost, defaultBaseURL+"/chat/completions", bytes.NewReader(body))
+	httpReq, err := http.NewRequest(http.MethodPost, cfg.BaseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+defaultAPIKey)
+	httpReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	return http.DefaultClient.Do(httpReq)
 }
 
@@ -152,7 +176,7 @@ func readSSE(r io.Reader, onDelta func(string)) error {
 	return sc.Err()
 }
 
-// ListModels returns known available model ids.
+// ListModels returns the configured model id.
 func ListModels() []string {
-	return []string{defaultModel}
+	return []string{cfg.Model}
 }

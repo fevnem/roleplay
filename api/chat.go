@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"dreamproject/contexts"
-	"dreamproject/database"
-	"dreamproject/model"
+	"roleplay/contexts"
+	"roleplay/database"
+	"roleplay/model"
 )
 
 // Store is shared with main; keeps the handler thin.

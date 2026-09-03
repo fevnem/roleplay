@@ -22,6 +22,8 @@ type Character struct {
 	Backstory   string  `yaml:"backstory"`
 	Style       string  `yaml:"style"`
 	Greeting    string  `yaml:"greeting"`
+	Avatar      string  `yaml:"avatar"`     // emoji avatar
+	Accent      string  `yaml:"accent"`     // hex color for theming the UI
 	Temperature float64 `yaml:"temperature"` // lower = consistent, higher = fun
 }
 
@@ -44,11 +46,13 @@ type Public struct {
 	Language    string  `json:"language"`
 	Personality string  `json:"personality"`
 	Greeting    string  `json:"greeting"`
+	Avatar      string  `json:"avatar,omitempty"`
+	Accent      string  `json:"accent,omitempty"`
 	Temperature float64 `json:"temperature"`
 }
 
 func (c Character) Public() Public {
-	return Public{c.Name, c.Language, c.Personality, c.Greeting, c.Temperature}
+	return Public{c.Name, c.Language, c.Personality, c.Greeting, c.Avatar, c.Accent, c.Temperature}
 }
 
 var characters = map[string]Character{}
@@ -74,6 +78,12 @@ func init() {
 		}
 		if c.Temperature <= 0 {
 			c.Temperature = 0.9
+		}
+		if c.Avatar == "" {
+			c.Avatar = "✨"
+		}
+		if c.Accent == "" {
+			c.Accent = "#7c8bff"
 		}
 		characters[key] = c
 	}

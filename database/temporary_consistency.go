@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"dreamproject/model"
+	"roleplay/model"
 )
 
 const (
