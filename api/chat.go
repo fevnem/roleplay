@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"roleplay/contexts"
 	"roleplay/database"
@@ -23,6 +24,11 @@ import (
 const (
 	maxSessionLen = 64
 	maxTextLen    = 4000
+
+	// factsTimeout bounds the detached facts-extraction call so a hung provider
+	// cannot leak a goroutine. The call is intentionally NOT request-scoped:
+	// it is detached below so it survives the handler returning.
+	factsTimeout = 15 * time.Second
 )
 
 // ChatClient is the subset of the model provider the API needs. The concrete
@@ -159,8 +165,16 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 
 	// learn facts about the user async — never blocks the reply. A provider
 	// blip here is harmless (ExtractFacts already swallows errors).
+	//
+	// IMPORTANT: the request's context is cancelled the moment this handler
+	// returns (Go's http server does that). Using r.Context() here would abort
+	// the facts call before it starts, silently never persisting facts. So we
+	// detach from cancellation (context.WithoutCancel) and layer a bounded
+	// timeout so a hung provider can't leak this goroutine.
 	go func(id, text string) {
-		for _, f := range h.Client.ExtractFacts(r.Context(), text) {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), factsTimeout)
+		defer cancel()
+		for _, f := range h.Client.ExtractFacts(ctx, text) {
 			h.Store.Remember(id, f)
 		}
 	}(in.Session, in.Text)
@@ -168,7 +182,7 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 
 // Characters lists all personas for the UI picker.
 func (h *Handler) Characters(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"characters": contexts.List()})
+	h.writeJSON(w, http.StatusOK, map[string]any{"characters": contexts.List()})
 }
 
 // History returns greeting + recent turns so a returning page restores context.
@@ -178,7 +192,7 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "session required", http.StatusBadRequest)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	h.writeJSON(w, http.StatusOK, map[string]any{
 		"greeting":  h.sessionCharacterGreeting(id),
 		"messages":  h.Store.Recent(id, 20),
 		"character": h.sessionCharacter(id),
@@ -193,10 +207,12 @@ func (h *Handler) sessionCharacterGreeting(id string) string {
 	return d.Greeting
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
+func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		h.logger().Warn("json encode failed", "error", err)
+	}
 }
 
 func mustJSON(v any) string {

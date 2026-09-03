@@ -23,10 +23,15 @@ type fakeClient struct {
 	facts     []string
 	factErr   bool
 
+	// if set, facts extraction blocks/returns cancelled when ctx is done —
+	// mimics a context-aware provider so cancellation bugs surface.
+	respectCtxCancel bool
+
 	mu          sync.Mutex
 	streamCalls int
 	messages    []model.Message
 	temp        float64
+	factCtx     context.Context
 }
 
 func (f *fakeClient) HasAPIKey() bool { return f.hasKey }
@@ -46,10 +51,23 @@ func (f *fakeClient) Stream(_ context.Context, messages []model.Message, tempera
 	return nil
 }
 
-func (f *fakeClient) ExtractFacts(_ context.Context, _ string) []string {
+func (f *fakeClient) ExtractFacts(ctx context.Context, _ string) []string {
+	if f.respectCtxCancel {
+		// Return facts only if the context is actually live; if it's already
+		// cancelled (the request-scoped bug), behave like a real provider and
+		// return nothing.
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+	}
 	if f.factErr {
 		return nil
 	}
+	f.mu.Lock()
+	f.factCtx = ctx
+	f.mu.Unlock()
 	return f.facts
 }
 
@@ -130,6 +148,45 @@ func TestChatPersistsFactsAsync(t *testing.T) {
 	}
 	if len(facts) != 1 || facts[0] != "lives in mumbai" {
 		t.Fatalf("expected fact learned, got %v", facts)
+	}
+}
+
+func TestChatFactsSurviveRequestContextCancellation(t *testing.T) {
+	// Regression: the facts goroutine must NOT be tied to the request-scoped
+	// context, which Go's http server cancels the moment the handler returns
+	// (ServeHTTP). A context-aware provider would refuse that cancelled call,
+	// silently dropping facts forever. We reproduce production exactly: a real
+	// request context that we cancel after the handler completes.
+	f := &fakeClient{hasKey: true, deltas: []string{"hi"}, facts: []string{"remembers tea"},
+		respectCtxCancel: true}
+	h := newTestHandler(f)
+
+	// Build the request with a cancellable context, like a real inbound request.
+	reqCtx, cancelReq := context.WithCancel(context.Background())
+	req := httptest.NewRequest(http.MethodPost, "/api/chat", strings.NewReader(`{"session":"s1","text":"I love tea","character":"luna"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(reqCtx)
+	rec := httptest.NewRecorder()
+	h.Chat(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	// Simulate the request ending: cancel the request context exactly as the
+	// http server does when ServeHTTP returns.
+	cancelReq()
+
+	// The detached facts goroutine must still persist facts despite that.
+	var facts []string
+	for i := 0; i < 80; i++ {
+		facts = h.Store.Facts("s1")
+		if len(facts) > 0 {
+			break
+		}
+		time.Sleep(3 * time.Millisecond)
+	}
+	if len(facts) != 1 || facts[0] != "remembers tea" {
+		t.Fatalf("expected facts persisted despite cancelled request ctx, got %v", facts)
 	}
 }
 

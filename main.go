@@ -104,12 +104,15 @@ func main() {
 		logger.Info("shutting down", "signal", sig.String())
 	}
 
-	store.Save()
+	// Drain in-flight requests FIRST so any writes they make land in the store,
+	// THEN snapshot — otherwise restart would lose those final turns.
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	err = srv.Shutdown(ctx)
+	cancel()
+	if err != nil {
 		logger.Error("forced shutdown", "error", err)
 	}
+	store.Save()
 	logger.Info("bye")
 }
 
