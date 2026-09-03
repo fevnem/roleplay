@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Max">
+  <defs>
+    <radialGradient id="aura" cx="50%" cy="38%" r="76%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.5"/>
+      <stop offset="55%" stop-color="#34d399" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0c8a3"/>
+      <stop offset="100%" stop-color="#dca479"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a3226"/>
+      <stop offset="100%" stop-color="#241d14"/>
+    </linearGradient>
+    <linearGradient id="hoodie" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1d3a31"/>
+      <stop offset="100%" stop-color="#10231c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="#07110d"/>
+  <circle cx="256" cy="200" r="250" fill="url(#aura)"/>
+  <!-- subtle sound waves -->
+  <path d="M128 300 q24 18 0 36 M96 288 q44 34 0 68 M384 300 q-24 18 0 36 M416 288 q-44 34 0 68" stroke="#34d399" stroke-width="3" fill="none" opacity="0.25" stroke-linecap="round"/>
+
+  <!-- hoodie body -->
+  <path d="M118 512 C118 408 158 362 256 362 C354 362 394 408 394 512 Z" fill="url(#hoodie)"/>
+  <!-- drawstrings -->
+  <path d="M240 370 C238 402 244 424 252 440 C256 424 260 402 258 370" stroke="#e7f6f0" stroke-width="3" fill="none"/>
+  <path d="M272 370 C274 402 268 424 260 440" stroke="#e7f6f0" stroke-width="3" fill="none"/>
+
+  <!-- neck -->
+  <path d="M226 348 C226 386 230 406 256 406 C282 406 286 386 286 348 Z" fill="#dca479"/>
+  <path d="M234 372 C244 392 268 392 278 372 Z" fill="#c08b5f" opacity="0.5"/>
+
+  <!-- ears -->
+  <ellipse cx="180" cy="252" rx="20" ry="26" fill="#dca479"/>
+  <ellipse cx="332" cy="252" rx="20" ry="26" fill="#dca479"/>
+
+  <!-- face -->
+  <ellipse cx="256" cy="252" rx="78" ry="102" fill="url(#skin)"/>
+
+  <!-- back hair (messy chops) -->
+  <path d="M180 240 C158 170 186 124 256 126 C324 128 350 168 330 238 C342 208 336 176 320 152 C290 128 252 150 258 176 C248 160 226 158 214 172 C206 196 190 218 180 240 Z" fill="url(#hair)"/>
+
+  <!-- sunglasses (chill) -->
+  <g>
+    <rect x="176" y="222" width="74" height="46" rx="18" fill="#141418"/>
+    <rect x="262" y="222" width="74" height="46" rx="18" fill="#141418"/>
+    <path d="M250 234 Q256 226 262 234" stroke="#0b0b0d" stroke-width="6" fill="none"/>
+    <path d="M186 250 q37 -6 40 6 M278 250 q35 -6 40 6" stroke="#34d399" stroke-width="4px" fill="none" opacity="0.7" stroke-linecap="round"/>
+    <line x1="250" y1="256" x2="262" y2="256" stroke="#0b0b0d" stroke-width="5"/>
+    <path d="M176 236 L168 224 M336 236 L344 224" stroke="#0b0b0d" stroke-width="5" fill="none"/>
+  </g>
+
+  <!-- brows (visible above glasses) -->
+  <path d="M198 212 Q218 200 240 208" stroke="#241d14" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M272 208 Q294 200 314 212" stroke="#241d14" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <!-- nose -->
+  <path d="M256 272 Q260 282 253 288" stroke="#c08b5f" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- mouth: dry easy half-smile -->
+  <path d="M238 306 Q256 318 276 308" stroke="#7c4a35" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M252 316 L260 316 L256 320 Z" fill="#fff" opacity="0.7"/>
+
+  <!-- messy front hair / fringe -->
+  <path d="M180 236 C160 164 184 120 256 122 C300 124 326 138 340 168 C320 140 292 128 262 130 C222 132 196 160 192 208 C186 228 190 240 180 236 Z" fill="url(#hair)"/>
+  <path d="M214 132 C218 102 258 94 298 116 C270 102 242 104 226 122 C222 160 226 200 234 230 C224 198 218 166 214 132 Z" fill="#4a3d2c"/>
+  <!-- beanie -->
+  <path d="M176 156 C176 112 216 96 256 96 C296 96 336 112 336 156 L336 168 C324 152 300 144 256 144 C212 144 188 152 176 168 Z" fill="#123d31"/>
+  <path d="M176 158 L336 158" stroke="#34d399" stroke-width="5" opacity="0.5"/>
+  <path d="M256 96 L256 78" stroke="#123d31" stroke-width="14" stroke-linecap="round"/>
+</svg>

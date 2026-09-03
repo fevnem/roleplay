@@ -3,57 +3,110 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="roleplay — immerse yourself in a chat with characters who remember you.">
-<meta name="theme-color" content="#07090d">
-<title>roleplay — talk to a character</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+<meta name="description" content="roleplay — chat with original anime characters who remember you.">
+<meta name="theme-color" content="#0a0a0d">
+<title>roleplay — an anime cast</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,600&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ✦ Ambient background -->
 <div class="bg" aria-hidden="true">
-  <div class="bg-orb orb-1"></div>
-  <div class="bg-orb orb-2"></div>
+  <div class="bg-wash"></div>
   <div class="bg-grid"></div>
+  <div class="bg-grain"></div>
 </div>
 
-<!-- ═══ LANDING ═══ -->
+<!-- ═══════════ LANDING ═══════════ -->
 <section id="landing" class="screen">
-  <div class="landing-wrap">
-    <header class="brand">
-      <div class="brand-mark">🎭</div>
-      <h1 class="brand-name">roleplay</h1>
-      <p class="brand-tag">Pick a character. They remember you.</p>
-    </header>
 
-    <div class="cards" id="cards"></div>
+  <header class="masthead">
+    <a class="wordmark" href="#" aria-label="roleplay home"><span class="mark">✦</span><span class="wm-text">roleplay</span></a>
+    <nav class="mast-nav" aria-label="Site">
+      <span class="mast-live">the cast · <b id="cast-count">04</b></span>
+    </nav>
+  </header>
 
-    <p class="footnote">Persistent memory · private · in-character</p>
-  </div>
+  <main class="stage">
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="kicker"><span class="k-dash">—</span> an original anime cast</div>
+        <h1 class="hero-title">Your story,<br><em>starring them.</em></h1>
+        <p class="hero-sub">Four original characters with real memory, real personality, and a voice of their own. Pick one — and let the scene begin.</p>
+        <div class="hero-actions">
+          <a class="btn" href="#the-cast">start chatting <span class="btn-arrow">↓</span></a>
+          <span class="hero-hint">free · no signup</span>
+        </div>
+      </div>
+
+      <div class="hero-figure" aria-hidden="true">
+        <figure class="hf hf-a" style="--c:#f97316"><img src="/img/aarav.svg" alt=""></figure>
+        <figure class="hf hf-l" style="--c:#a78bfa"><img src="/img/luna.svg" alt=""></figure>
+        <figure class="hf hf-m" style="--c:#34d399"><img src="/img/max.svg" alt=""></figure>
+        <figure class="hf hf-z" style="--c:#f472b6"><img src="/img/zara.svg" alt=""></figure>
+      </div>
+    </section>
+
+    <!-- name ticker -->
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        <span>Aarav&nbsp;✦&nbsp;Luna&nbsp;✦&nbsp;Max&nbsp;✦&nbsp;Zara&nbsp;✦&nbsp;</span><span>Aarav&nbsp;✦&nbsp;Luna&nbsp;✦&nbsp;Max&nbsp;✦&nbsp;Zara&nbsp;✦&nbsp;</span>
+      </div>
+    </div>
+
+    <!-- The cast -->
+    <section id="the-cast" class="cast-head">
+      <div>
+        <div class="kicker rk">— the cast</div>
+        <h2 class="cast-title">Meet them.</h2>
+      </div>
+      <div class="cast-note">01 — 04 · pick your company</div>
+    </section>
+
+    <div class="roster" id="cards" role="list"></div>
+
+    <footer class="foot">
+      <span class="foot-mark">✦</span>
+      <span class="foot-word">roleplay</span>
+    </footer>
+
+  </main>
 </section>
 
-<!-- ═══ CHAT ═══ -->
+<!-- ═══════════ CHAT ═══════════ -->
 <section id="chat" class="screen" hidden>
   <header class="chatbar">
     <div class="chatbar-left">
-      <button id="back" class="icon-btn" aria-label="All characters" title="All characters">‹</button>
-      <div class="avatar" id="chat-avatar">✨</div>
-      <div class="chatbar-meta">
-        <div class="presence"><span class="dot" id="presence-dot"></span><span id="presence-label">Online</span></div>
-        <div class="chat-name" id="chat-name">Character</div>
+      <button id="back" class="icon-btn" aria-label="All characters" title="All characters">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="chat-bar-avatar" id="chat-avatar"></div>
+      <div class="chat-meta">
+        <div class="name" id="chat-name">Character</div>
+        <div class="status"><span class="dot"></span><span id="presence-label">Online</span></div>
       </div>
     </div>
     <div class="chatbar-right">
-      <button id="info-btn" class="icon-btn" aria-label="About this character" title="About">i</button>
+      <button id="info-btn" class="icon-btn" aria-label="About this character" title="About">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01"/><path d="M11 12h1v4"/></svg>
+      </button>
     </div>
   </header>
 
-  <main id="thread"></main>
+  <main class="thread" id="thread"></main>
 
   <div class="composer">
-    <textarea id="text" rows="1" placeholder="Message your character…" autocomplete="off" enterkeyhint="send"></textarea>
-    <button id="send" class="send-btn" aria-label="Send" disabled>➤</button>
+    <div class="composer-inner">
+      <textarea id="text" rows="1" placeholder="Say something…" autocomplete="off" enterkeyhint="send"></textarea>
+      <button id="send" class="send-btn" aria-label="Send" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </button>
+    </div>
   </div>
 </section>
 
@@ -61,7 +114,7 @@
 <div class="modal" id="info-modal" hidden>
   <div class="modal-card">
     <button class="modal-close" id="modal-close" aria-label="Close">×</button>
-    <div class="modal-avatar" id="modal-avatar">✨</div>
+    <div class="modal-avatar" id="modal-avatar"></div>
     <h2 id="modal-name"></h2>
     <div class="modal-lang" id="modal-lang"></div>
     <p id="modal-personality"></p>

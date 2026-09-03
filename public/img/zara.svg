@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Zara">
+  <defs>
+    <radialGradient id="aura" cx="50%" cy="34%" r="78%">
+      <stop offset="0%" stop-color="#f472b6" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#f472b6" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f7d3b8"/>
+      <stop offset="100%" stop-color="#e8b48c"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff77b8"/>
+      <stop offset="100%" stop-color="#e5529c"/>
+    </linearGradient>
+    <linearGradient id="jacket" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#571f38"/>
+      <stop offset="100%" stop-color="#2e0f1e"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="#170a12"/>
+  <circle cx="256" cy="184" r="250" fill="url(#aura)"/>
+  <!-- sparkles -->
+  <g fill="#ffd6ec" opacity="0.85">
+    <path d="M104 118 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 Z"/>
+    <path d="M404 160 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 Z"/>
+    <path d="M130 300 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 Z"/>
+    <path d="M392 320 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2 Z"/>
+  </g>
+
+  <!-- jacket / shoulders -->
+  <path d="M112 512 C112 402 156 358 256 358 C356 358 400 402 400 512 Z" fill="url(#jacket)"/>
+  <path d="M256 358 L256 470" stroke="#ff9ecf" stroke-width="4" opacity="0.6"/>
+  <path d="M138 470 L256 444 L374 470" stroke="#ff9ecf" stroke-width="3" opacity="0.4" fill="none"/>
+  <!-- star badge -->
+  <path d="M256 396 l6 14 15 2 -11 10 3 15 -13 -7 -13 7 3 -15 -11 -10 15 -2 Z" fill="#ffd166"/>
+
+  <!-- neck -->
+  <path d="M226 344 C226 382 230 402 256 402 C282 402 286 382 286 344 Z" fill="#e8b48c"/>
+  <path d="M234 368 C244 388 268 388 278 368 Z" fill="#d49d70" opacity="0.5"/>
+
+  <!-- ears -->
+  <ellipse cx="178" cy="248" rx="18" ry="24" fill="#e8b48c"/>
+  <ellipse cx="334" cy="248" rx="18" ry="24" fill="#e8b48c"/>
+  <!-- star studs -->
+  <path d="M172 276 l3 6 6 2 -6 2 -3 6 -3 -6 -6 -2 6 -2 Z" fill="#ffd166"/>
+  <path d="M346 276 l3 6 6 2 -6 2 -3 6 -3 -6 -6 -2 6 -2 Z" fill="#ffd166"/>
+
+  <!-- face -->
+  <ellipse cx="256" cy="250" rx="76" ry="98" fill="url(#skin)"/>
+
+  <!-- back hair -->
+  <path d="M172 252 C150 148 178 92 256 92 C336 92 362 150 340 254 C354 220 336 170 306 140 C270 114 244 122 232 150 C200 138 182 176 176 216 C174 234 176 248 172 252 Z" fill="url(#hair)"/>
+  <!-- teal streaks back -->
+  <path d="M250 120 C268 108 292 110 306 138 C286 124 266 124 254 138 Z" fill="#3ef0c1" opacity="0.8"/>
+
+  <!-- brows: lively -->
+  <path d="M198 224 Q218 214 238 222" stroke="#6e243f" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M274 222 Q294 214 314 224" stroke="#6e243f" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <!-- eyes: big sparkling -->
+  <g>
+    <ellipse cx="220" cy="252" rx="28" ry="22" fill="#5c1733"/>
+    <ellipse cx="220" cy="252" rx="22" ry="17" fill="#f472b6"/>
+    <circle cx="213" cy="246" r="9" fill="#fff" opacity="0.95"/>
+    <circle cx="227" cy="258" r="4" fill="#fff" opacity="0.5"/>
+    <path d="M189 240 Q220 230 251 240" stroke="#3a0e20" stroke-width="4" fill="none"/>
+    <ellipse cx="292" cy="252" rx="28" ry="22" fill="#5c1733"/>
+    <ellipse cx="292" cy="252" rx="22" ry="17" fill="#f472b6"/>
+    <circle cx="285" cy="246" r="9" fill="#fff" opacity="0.95"/>
+    <circle cx="299" cy="258" r="4" fill="#fff" opacity="0.5"/>
+    <path d="M261 240 Q292 230 323 240" stroke="#3a0e20" stroke-width="4" fill="none"/>
+    <!-- lashes -->
+    <path d="M188 232 Q176 226 170 218 M324 232 Q336 226 342 218" stroke="#6e243f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- nose -->
+  <path d="M256 272 Q259 280 254 284" stroke="#d49d70" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- mouth: huge excited grin -->
+  <path d="M228 300 Q256 322 286 302" stroke="#a94a5f" stroke-width="4" fill="none"/>
+  <path d="M236 306 Q256 318 278 306 Q258 330 236 306 Z" fill="#6e2440"/>
+  <path d="M244 312 L248 316 L252 312 Q256 314 260 312 Q256 318 252 320 L248 320 L244 312 Z" fill="#fff" opacity="0.9"/>
+
+  <!-- front bangs with side ponytail -->
+  <path d="M174 246 C154 158 184 92 258 94 C336 96 360 156 342 246 C324 198 306 176 282 168 C302 200 296 238 272 252 C266 224 258 206 248 198 C256 228 250 254 234 260 C228 232 222 210 214 198 C206 234 190 246 174 246 Z" fill="url(#hair)"/>
+  <path d="M200 130 C222 92 286 92 310 130 C286 102 254 100 228 120 C220 158 218 196 224 234 C208 200 204 162 200 130 Z" fill="#ff8fc5"/>
+  <!-- side ponytail -->
+  <path d="M342 200 C372 214 386 258 380 312 C376 356 362 372 348 360 C360 340 366 300 360 262 C356 232 354 214 342 200 Z" fill="url(#hair)"/>
+  <path d="M348 240 C356 280 356 320 350 352 C358 320 360 284 352 244 Z" fill="#3ef0c1" opacity="0.75"/>
+</svg>
